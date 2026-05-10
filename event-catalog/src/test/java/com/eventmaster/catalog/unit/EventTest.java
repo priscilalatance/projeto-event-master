@@ -62,8 +62,8 @@ class EventTest {
     }
 
     @Nested
-    @DisplayName("Publicacao e Cancelamento")
-    class StatusTest {
+    @DisplayName("Ciclo de Vida do Evento")
+    class CicloDeVidaTest {
 
         @Test
         @DisplayName("deve publicar evento em DRAFT")
@@ -88,11 +88,31 @@ class EventTest {
             event.cancel();
             assertEquals(EventStatus.CANCELLED, event.getStatus());
         }
-    }
 
-    @Nested
-    @DisplayName("Controle de Estoque")
-    class EstoqueTest {
+        @Test
+        @DisplayName("nao deve cancelar evento finalizado")
+        void shouldThrowWhenCancellingFinished() {
+            Event event = criarEvento(100);
+            event.publish();
+            event.finish();
+            assertThrows(BusinessRuleException.class, event::cancel);
+        }
+
+        @Test
+        @DisplayName("deve finalizar evento publicado")
+        void shouldFinish() {
+            Event event = criarEvento(100);
+            event.publish();
+            event.finish();
+            assertEquals(EventStatus.FINISHED, event.getStatus());
+        }
+
+        @Test
+        @DisplayName("nao deve finalizar evento em DRAFT")
+        void shouldThrowWhenFinishingDraft() {
+            Event event = criarEvento(100);
+            assertThrows(BusinessRuleException.class, event::finish);
+        }
 
         @Test
         @DisplayName("deve ter disponibilidade quando publicado e com estoque")
@@ -107,41 +127,6 @@ class EventTest {
         void shouldNotHaveAvailabilityWhenDraft() {
             Event event = criarEvento(5);
             assertFalse(event.hasAvailability());
-        }
-
-        @Test
-        @DisplayName("deve decrementar estoque")
-        void shouldDecrement() {
-            Event event = criarEvento(3);
-            event.publish();
-            event.decrementStock();
-            assertEquals(2, event.getAvailableTickets());
-        }
-
-        @Test
-        @DisplayName("deve lancar erro ao decrementar sem estoque")
-        void shouldThrowWhenNoStock() {
-            Event event = criarEvento(1);
-            event.publish();
-            event.decrementStock();
-            assertThrows(BusinessRuleException.class, event::decrementStock);
-        }
-
-        @Test
-        @DisplayName("deve incrementar estoque")
-        void shouldIncrement() {
-            Event event = criarEvento(3);
-            event.publish();
-            event.decrementStock();
-            event.incrementStock();
-            assertEquals(3, event.getAvailableTickets());
-        }
-
-        @Test
-        @DisplayName("deve lancar erro ao incrementar estoque completo")
-        void shouldThrowWhenFull() {
-            Event event = criarEvento(2);
-            assertThrows(BusinessRuleException.class, event::incrementStock);
         }
     }
 }

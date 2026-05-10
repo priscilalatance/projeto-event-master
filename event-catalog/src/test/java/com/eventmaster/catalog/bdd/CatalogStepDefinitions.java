@@ -2,6 +2,7 @@ package com.eventmaster.catalog.bdd;
 
 import com.eventmaster.catalog.application.dto.CreateEventRequest;
 import com.eventmaster.catalog.application.dto.EventResponse;
+import com.eventmaster.catalog.application.strategy.CategoryFilterStrategy;
 import com.eventmaster.catalog.application.usecase.CreateEventUseCase;
 import com.eventmaster.catalog.application.usecase.SearchEventsUseCase;
 import com.eventmaster.catalog.domain.entity.Event;
@@ -81,7 +82,7 @@ public class CatalogStepDefinitions {
     @When("o cliente filtra por categoria {string}")
     public void clienteFiltra(String category) {
         SearchEventsUseCase useCase = new SearchEventsUseCase(repo);
-        responseList = useCase.findByCategory(category);
+        responseList = useCase.execute(new CategoryFilterStrategy(category));
     }
 
     @Then("somente eventos de {string} devem ser retornados")

@@ -2,6 +2,8 @@ package com.eventmaster.catalog.unit;
 
 import com.eventmaster.catalog.application.dto.CreateEventRequest;
 import com.eventmaster.catalog.application.dto.EventResponse;
+import com.eventmaster.catalog.application.strategy.AllEventsStrategy;
+import com.eventmaster.catalog.application.strategy.CategoryFilterStrategy;
 import com.eventmaster.catalog.application.usecase.CreateEventUseCase;
 import com.eventmaster.catalog.application.usecase.SearchEventsUseCase;
 import com.eventmaster.catalog.domain.entity.Event;
@@ -73,31 +75,42 @@ class UseCaseTest {
     }
 
     @Nested
-    @DisplayName("SearchEventsUseCase")
+    @DisplayName("SearchEventsUseCase — Strategy Pattern")
     class SearchTest {
 
         @Test
-        @DisplayName("deve listar todos os eventos")
-        void shouldListAll() {
+        @DisplayName("AllEventsStrategy deve retornar todos os eventos")
+        void shouldListAllWithStrategy() {
             InMemoryEventRepository repo = new InMemoryEventRepository();
-            Event e1 = new Event("Hamlet", "Teatro Municipal", LocalDateTime.now(), 100, 50.0, "TEATRO");
-            Event e2 = new Event("O Rei Leao", "Teatro Abril", LocalDateTime.now(), 50, 30.0, "MUSICAL");
-            repo.save(e1);
-            repo.save(e2);
+            repo.save(new Event("Hamlet", "Teatro Municipal", LocalDateTime.now(), 100, 50.0, "TEATRO"));
+            repo.save(new Event("O Rei Leao", "Teatro Abril", LocalDateTime.now(), 50, 30.0, "MUSICAL"));
 
             SearchEventsUseCase useCase = new SearchEventsUseCase(repo);
-            List<EventResponse> result = useCase.listAll();
+            List<EventResponse> result = useCase.execute(new AllEventsStrategy());
 
             assertEquals(2, result.size());
         }
 
         @Test
-        @DisplayName("deve retornar lista vazia")
-        void shouldReturnEmpty() {
-            InMemoryEventRepository repo = new InMemoryEventRepository();
-            SearchEventsUseCase useCase = new SearchEventsUseCase(repo);
+        @DisplayName("AllEventsStrategy deve retornar lista vazia quando repositorio vazio")
+        void shouldReturnEmptyWithAllStrategy() {
+            SearchEventsUseCase useCase = new SearchEventsUseCase(new InMemoryEventRepository());
+            assertTrue(useCase.execute(new AllEventsStrategy()).isEmpty());
+        }
 
-            assertTrue(useCase.listAll().isEmpty());
+        @Test
+        @DisplayName("CategoryFilterStrategy deve filtrar por categoria")
+        void shouldFilterByCategoryWithStrategy() {
+            InMemoryEventRepository repo = new InMemoryEventRepository();
+            repo.save(new Event("Hamlet", "Teatro Municipal", LocalDateTime.now(), 100, 50.0, "TEATRO"));
+            repo.save(new Event("O Rei Leao", "Teatro Abril", LocalDateTime.now(), 50, 30.0, "MUSICAL"));
+            repo.save(new Event("Auto da Compadecida", "Teatro Oficina", LocalDateTime.now(), 30, 20.0, "TEATRO"));
+
+            SearchEventsUseCase useCase = new SearchEventsUseCase(repo);
+            List<EventResponse> result = useCase.execute(new CategoryFilterStrategy("TEATRO"));
+
+            assertEquals(2, result.size());
+            assertTrue(result.stream().allMatch(e -> e.category().equals("TEATRO")));
         }
 
         @Test
@@ -117,24 +130,8 @@ class UseCaseTest {
         @Test
         @DisplayName("deve retornar vazio para id inexistente")
         void shouldReturnEmptyForInvalidId() {
-            InMemoryEventRepository repo = new InMemoryEventRepository();
-            SearchEventsUseCase useCase = new SearchEventsUseCase(repo);
-
+            SearchEventsUseCase useCase = new SearchEventsUseCase(new InMemoryEventRepository());
             assertTrue(useCase.findById("inexistente").isEmpty());
-        }
-
-        @Test
-        @DisplayName("deve filtrar por categoria")
-        void shouldFilterByCategory() {
-            InMemoryEventRepository repo = new InMemoryEventRepository();
-            repo.save(new Event("Hamlet", "Teatro Municipal", LocalDateTime.now(), 100, 50.0, "TEATRO"));
-            repo.save(new Event("O Rei Leao", "Teatro Abril", LocalDateTime.now(), 50, 30.0, "MUSICAL"));
-            repo.save(new Event("Auto da Compadecida", "Teatro Oficina", LocalDateTime.now(), 30, 20.0, "TEATRO"));
-
-            SearchEventsUseCase useCase = new SearchEventsUseCase(repo);
-            List<EventResponse> result = useCase.findByCategory("TEATRO");
-
-            assertEquals(2, result.size());
         }
     }
 }
