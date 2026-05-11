@@ -206,12 +206,23 @@ CLOSED (normal) -> falhas atingem 50% -> OPEN (rejeita tudo)
 O microsservico de Catalogo de Eventos implementa:
 
 - **SRP:** Cada classe tem uma responsabilidade (Entity, UseCase, Repository, Controller)
-- **OCP:** Novos use cases podem ser adicionados sem alterar os existentes
-- **LSP:** O adapter JpaEventRepositoryAdapter substitui qualquer EventRepository
-- **ISP:** Interface EventRepository e enxuta (save, findById, findAll, findByCategory)
-- **DIP:** Use cases dependem da interface EventRepository, nao da implementacao JPA
+- **OCP:** Novas estrategias de busca sao adicionadas sem alterar SearchEventsUseCase
+- **LSP:** JpaEventRepositoryAdapter substitui qualquer EventRepository e novas strategies substituem EventSearchStrategy
+- **ISP:** EventRepository enxuta (save, findById, findAll, findByCategory) e EventSearchStrategy com um unico metodo especifico
+- **DIP:** Use cases dependem de interfaces (EventRepository, EventSearchStrategy), nao de implementacoes concretas
 
 **Design Pattern:** Repository Pattern (GoF) para abstrair o acesso a dados.
+
+**Design Pattern — Strategy:**
+
+```
+SearchEventsUseCase.execute(strategy) → delega para strategy.search(repository)
+EventController → escolhe a strategy com base nos parametros HTTP
+```
+
+**Design Pattern — Adapter:**
+
+`JpaEventRepositoryAdapter` adapta a interface Spring Data JPA (`JpaRepository`) para o contrato do dominio (`EventRepository`). O dominio nao conhece JPA, Spring ou H2.
 
 **Lombok:** Utilizado na camada de infraestrutura (EventEntity) para reduzir boilerplate (@Getter, @Setter, @Builder, @NoArgsConstructor, @AllArgsConstructor).
 
@@ -223,19 +234,20 @@ O microsservico de Catalogo de Eventos implementa:
       / Unitarios   \      <- Muitos (logica de negocio)
 ```
 
-- **Unitarios (TDD):** JUnit 5 - validacoes de entidade, controle de estoque, use cases
+- **Unitarios (TDD):** JUnit 5 - validacoes de entidade, ciclo de vida, use cases com Strategy
 - **BDD:** Cucumber + Gherkin - cenarios de cadastro e busca de eventos
 
 ---
 
 ## Decisoes Arquiteturais - Justificativa
 
-| Decisao              | Impacto Escalabilidade           | Impacto Manutencao                   |
-| -------------------- | -------------------------------- | ------------------------------------ |
-| Microsservicos       | Scale independente por servico   | Deploy isolado, menor blast radius   |
-| Repository Pattern   | Extensivel com novos adapters    | Troca de banco sem alterar dominio   |
-| Clean Architecture   | Testabilidade                    | Independencia de frameworks          |
-| Spring Boot 3        | Auto-scaling com containers      | Ecossistema maduro, comunidade ativa |
+| Decisao | Impacto Escalabilidade | Impacto Manutencao |
+|---------|----------------------|-------------------|
+| Microsservicos | Scale independente por servico | Deploy isolado, menor blast radius |
+| Strategy Pattern (busca) | Novas estrategias sem redeployar use case | Nova busca = nova classe; zero alteracao em codigo existente (OCP) |
+| Adapter Pattern (repositorio) | Cache ou banco secundario adicionados sem tocar dominio | Troca de banco (H2 → PostgreSQL) em um unico arquivo |
+| Clean Architecture | Testabilidade; logica de negocio sem Spring context | Independencia de frameworks; dominio testado em milissegundos |
+| Spring Boot 3 | Auto-scaling com containers | Ecossistema maduro, comunidade ativa |
 | Cloudflare WR        | Controla picos de trafego        | Nao requer config em cada microsvc   |
 | Redis Redlock        | Evita race conditions escalavel  | TTL automatico, sem deadlocks        |
 
@@ -264,10 +276,12 @@ Este e o microsservico completo do projeto. Ele gerencia o cadastro e consulta d
 
 **Conceitos aplicados no codigo:**
 
-- **Repository Pattern** — abstrai acesso a dados (interface no dominio, JPA na infra)
+- **Strategy Pattern (GoF)** — `EventSearchStrategy` com `AllEventsStrategy` e `CategoryFilterStrategy`; novas buscas sem alterar `SearchEventsUseCase`
+- **Adapter Pattern (GoF)** — `JpaEventRepositoryAdapter` adapta Spring Data JPA para o contrato do dominio
 - **Clean Architecture** — dominio nao depende de Spring, JPA ou HTTP
-- **DIP (SOLID)** — use cases dependem de interfaces, nao de implementacoes concretas
-- **Validacoes de dominio** — regras de negocio na entidade (nome obrigatorio, preco >= 0, estoque > 0)
+- **DIP (SOLID)** — use cases dependem de `EventRepository` e `EventSearchStrategy` (interfaces), nao de implementacoes concretas
+- **Validacoes de dominio** — regras de negocio na entidade (nome obrigatorio, preco >= 0, ingressos > 0)
+- **Ciclo de Vida completo** — `Event` gerencia transicoes de estado: DRAFT → PUBLISHED → FINISHED / CANCELLED
 
 ---
 
@@ -374,17 +388,22 @@ event-catalog/
     │   │   ├── domain/
     │   │   │   ├── entity/
     │   │   │   │   ├── Event.java              # Entidade com regras de negocio
-    │   │   │   │   └── EventStatus.java        # Enum (DRAFT, PUBLISHED, etc)
+    │   │   │   │   └── EventStatus.java        # Enum (DRAFT, PUBLISHED, CANCELLED, FINISHED)
     │   │   │   ├── exception/
     │   │   │   │   ├── DomainValidationException.java
     │   │   │   │   ├── BusinessRuleException.java
     │   │   │   │   └── EventNotFoundException.java
-    │   │   │   └── repository/
-    │   │   │       └── EventRepository.java    # Interface (port)
+    │   │   │   ├── repository/
+    │   │   │   │   └── EventRepository.java    # Interface (port)
+    │   │   │   └── strategy/
+    │   │   │       └── EventSearchStrategy.java # Interface GoF Strategy
     │   │   ├── application/
     │   │   │   ├── usecase/
     │   │   │   │   ├── CreateEventUseCase.java
-    │   │   │   │   └── SearchEventsUseCase.java
+    │   │   │   │   └── SearchEventsUseCase.java # Usa EventSearchStrategy
+    │   │   │   ├── strategy/
+    │   │   │   │   ├── AllEventsStrategy.java
+    │   │   │   │   └── CategoryFilterStrategy.java
     │   │   │   └── dto/
     │   │   │       ├── CreateEventRequest.java
     │   │   │       └── EventResponse.java

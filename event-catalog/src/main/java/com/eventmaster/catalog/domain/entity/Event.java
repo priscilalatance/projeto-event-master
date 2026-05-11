@@ -2,20 +2,22 @@ package com.eventmaster.catalog.domain.entity;
 
 import com.eventmaster.catalog.domain.exception.BusinessRuleException;
 import com.eventmaster.catalog.domain.exception.DomainValidationException;
+import lombok.Getter;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+@Getter
 public class Event {
 
-    private String id;
-    private String name;
-    private String venue;
-    private LocalDateTime date;
-    private int totalTickets;
-    private int availableTickets;
-    private double price;
-    private String category;
+    private final String id;
+    private final String name;
+    private final String venue;
+    private final LocalDateTime date;
+    private final int totalTickets;
+    private final int availableTickets;
+    private final double price;
+    private final String category;
     private EventStatus status;
 
     public Event(String name, String venue, LocalDateTime date, int totalTickets, double price, String category) {
@@ -39,6 +41,7 @@ public class Event {
         this.status = EventStatus.DRAFT;
     }
 
+    // Construtor de reconstrução a partir da persistência
     public Event(String id, String name, String venue, LocalDateTime date,
                  int totalTickets, int availableTickets, double price, String category, EventStatus status) {
         this.id = id;
@@ -66,31 +69,14 @@ public class Event {
         this.status = EventStatus.CANCELLED;
     }
 
+    public void finish() {
+        if (this.status != EventStatus.PUBLISHED) {
+            throw new BusinessRuleException("Somente eventos PUBLISHED podem ser finalizados");
+        }
+        this.status = EventStatus.FINISHED;
+    }
+
     public boolean hasAvailability() {
         return availableTickets > 0 && status == EventStatus.PUBLISHED;
     }
-
-    public void decrementStock() {
-        if (!hasAvailability()) {
-            throw new BusinessRuleException("Sem ingressos disponiveis");
-        }
-        availableTickets--;
-    }
-
-    public void incrementStock() {
-        if (availableTickets >= totalTickets) {
-            throw new BusinessRuleException("Estoque ja esta completo");
-        }
-        availableTickets++;
-    }
-
-    public String getId() { return id; }
-    public String getName() { return name; }
-    public String getVenue() { return venue; }
-    public LocalDateTime getDate() { return date; }
-    public int getTotalTickets() { return totalTickets; }
-    public int getAvailableTickets() { return availableTickets; }
-    public double getPrice() { return price; }
-    public String getCategory() { return category; }
-    public EventStatus getStatus() { return status; }
 }
