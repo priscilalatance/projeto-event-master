@@ -180,20 +180,20 @@ CLOSED (normal) -> falhas atingem 50% -> OPEN (rejeita tudo)
 
 **JWT Claims:** user_id, roles, exp, iss, aud
 
-### 3.2 Protecao OWASP Top 10
+### 3.2 Protecao OWASP Top 10 (2025)
 
-| #   | Vulnerabilidade           | Mitigacao                                            |
-| --- | ------------------------- | ---------------------------------------------------- |
-| A01 | Broken Access Control     | RBAC + validacao em cada servico (Zero Trust)        |
-| A02 | Cryptographic Failures    | TLS 1.3 entre servicos, AES-256 para dados sensiveis |
-| A03 | Injection                 | Bean Validation, queries parametrizadas (JPA)        |
-| A04 | Insecure Design           | Threat modeling, principio do menor privilegio       |
-| A05 | Security Misconfiguration | IaC com Terraform, secrets no AWS Secrets Manager    |
-| A06 | Vulnerable Components     | Dependabot, OWASP Dependency Check no Maven                |
-| A07 | Auth Failures             | Rate limiting no login, MFA, tokens com TTL curto, Cloudflare WR |
-| A08 | Data Integrity Failures   | Assinatura de payloads entre servicos (HMAC), Redis Redlock     |
-| A09 | Logging Failures          | Logs estruturados centralizados (Datadog + SLF4J)    |
-| A10 | SSRF                      | Whitelist de URLs, validacao de inputs de URL        |
+| #   | Vulnerabilidade                        | Mitigacao                                            |
+| --- | -------------------------------------- | ---------------------------------------------------- |
+| A01 | Broken Access Control                  | RBAC + validacao em cada servico (Zero Trust)        |
+| A02 | Security Misconfiguration              | IaC com Terraform, secrets no AWS Secrets Manager    |
+| A03 | Software Supply Chain Failures         | Dependabot, OWASP Dependency Check no Maven, SBOM   |
+| A04 | Cryptographic Failures                 | TLS 1.3 entre servicos, AES-256 para dados sensiveis |
+| A05 | Injection                              | Bean Validation, queries parametrizadas (JPA)        |
+| A06 | Insecure Design                        | Threat modeling, principio do menor privilegio       |
+| A07 | Authentication Failures                | Rate limiting no login, MFA, tokens com TTL curto, Cloudflare WR |
+| A08 | Software or Data Integrity Failures    | Assinatura de payloads entre servicos (HMAC), Redis Redlock     |
+| A09 | Security Logging and Alerting Failures | Logs estruturados centralizados (Datadog + SLF4J), alertas automaticos |
+| A10 | Mishandling of Exceptional Conditions  | GlobalExceptionHandler, fallbacks com Circuit Breaker, respostas sem stack trace |
 
 **Zero Trust entre servicos:** mTLS + service mesh (cada chamada interna e autenticada).
 
